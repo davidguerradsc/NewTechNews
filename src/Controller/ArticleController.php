@@ -7,7 +7,14 @@ namespace App\Controller;
 use App\Entity\Article;
 use App\Entity\Categorie;
 use App\Entity\Membre;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -38,7 +45,7 @@ class ArticleController extends AbstractController
         $article = new Article();
         $article->setTitre("Grand débat : Macron cherche le bon tempo pour faire ses annonces");
         $article->setSlug("grand-debat-macron-cherche-le-bon-tempo-pour-faire-ses-annonces")
-                ->setContenu("
+            ->setContenu("
                                 <p>Même si les mesures qu’il devait annoncer lundi soir ont largement fuité dans la presse, le chef de l’Etat va décaler de plusieurs jours l’intervention dans laquelle il justifiera ses choix.
                                 Pour l’effet de surprise… On repassera. L’incendie de Notre Dame a contraint Emmanuel Macron a reporté sine die son allocution solennelle programmée lundi soir. Annulée, aussi, la conférence de ce mercredi. Le président l’a lui-même affirmé mardi soir, le moment de « la politique et ses tumultes » n’est « pas encore venu ».
                                 Problème, l’ensemble des annonces étaient déjà enregistrées. Et n’ont pas tardé à fuiter, au grand dam de l’Elysée. « Cette allocution n’a pas eu lieu. Cela n’a pas été diffusé. Cet enregistrement, il n’existe pas, il n’existera pas. Cela n’a aucune valeur. On ne va pas prendre la même bande. Le contexte est totalement différent », s’étranglent les conseillers du président.
@@ -51,13 +58,12 @@ class ArticleController extends AbstractController
                                 « Ce serait cosmique de le faire cette semaine »
                                 « Entre le vendredi Saint et le week-end de Pâques, il n’y aura rien cette semaine, prédit un ministre. Il faut que cela se passe entre le lundi de Pâques et le 1er mai, parce qu’après ce sera la campagne des européennes. » L’un de ses collègues pousse dans le même sens : « Ce serait cosmique de le faire cette semaine. Toutes les conversations vont tourner autour de Notre-Dame. Personne ne s’intéressera à la désindexation des retraites ! » Macron promet de revenir devant les Français « dans les jours prochains ». Sans en dire plus.
                                 Faut-il, pour autant, s’attendre à une modification des arbitrages ? « Une ou deux semaines de décalage, cela peut conduire à faire bouger les choses », observe un ministre. Un autre n’en démord pas : « Les mesures sont les mesures. On ne va pas les bouger ! » Malgré le refrain du tournant, martelé depuis des jours, le même assure que la ligne politique, non plus, ne bougera pas tant que cela. « Ceux qui pensent que Macron va se déjuger ou se dédire se trompent lourdement. Tous ceux qui se sont déjugés par le passé se sont plantés. »</p>")
-                ->setFeaturedImage("e_macron.jpg")
-                ->setSpotlight(1)
-                ->setSpecial(0)
-                ->setMembre($membre)
-                ->setCategorie($categorie)
-                ->setDateCretion(new \DateTime())
-            ;
+            ->setFeaturedImage("e_macron.jpg")
+            ->setSpotlight(1)
+            ->setSpecial(0)
+            ->setMembre($membre)
+            ->setCategorie($categorie)
+            ->setDateCretion(new \DateTime());
 
         /*
          *
@@ -82,6 +88,81 @@ class ArticleController extends AbstractController
             . 'de Auteur : '
             . $membre->getPrenom()
         );
+
+    }
+
+    /**
+     * Formulaire pour créer un article
+     * @Route("/creer-article", name="article_add")
+     */
+    public function addArticle()
+    {
+        # Créer un nouvel article
+        $article = new Article();
+
+        # Récuperation d'un auteur (membre)
+        $membre = $this->getDoctrine()
+            ->getRepository(Membre::class)
+            ->find(1);
+
+        # Affecter un Auteur à l'article
+        $article->setMembre($membre);
+
+        # Création d'un formulaire permettant l'ajout d'un article
+        $form = $this->createFormBuilder($article)
+            # Titre
+            ->add('titre', TextType::class, [
+                'required' => true,
+                'label' => false,
+                'attr' => [
+                    'placeholder' => "titre de l'article"
+                ]
+            ])
+            # Catégorie
+            ->add('categorie', EntityType::class, [
+                'class' => Categorie::class,
+                'choice_label' => 'nom',
+                'label' => false
+            ])
+            # Contenu
+            ->add('contenu', TextareaType::class, [
+                'required' => true,
+                'label' => false
+            ])
+            ->add('featuredImage', FileType::class, [
+                'required' => false,
+                'label' => false,
+                'attr' => [
+                    'class' => 'dropify'
+                ]
+            ])
+            ->add('special', CheckboxType::class, [
+                'required' => false,
+                'attr' => [
+                    'data-toggle' => 'toggle',
+                    'data-on' => 'Oui',
+                    'data-off' => 'Non'
+                ]
+            ])
+
+            ->add('spotlight', CheckboxType::class, [
+                'required' => false,
+                'attr' => [
+                    'data-toggle' => 'toggle',
+                    'data-on' => 'Oui',
+                    'data-off' => 'Non'
+                ]
+            ])
+
+            ->add('submit', SubmitType::class, [
+                'label' => 'Publier mon Article'
+            ])
+
+            ->getForm();
+
+        return $this->render("article/addForm.html.twig", [
+            'form' => $form->createView()
+        ]);
 
 
     }
