@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Article;
 use App\Entity\Categorie;
 use App\Entity\Membre;
+use App\Form\ArticleFormType;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -15,11 +16,17 @@ use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 class ArticleController extends AbstractController
 {
+
+    use HelperTrait;
+
     /**
      *  Démonstration de l'ajout d'un Article avec Doctrine
      * @Route("/demo/article", name="article_demo")
@@ -95,7 +102,7 @@ class ArticleController extends AbstractController
      * Formulaire pour créer un article
      * @Route("/creer-article", name="article_add")
      */
-    public function addArticle()
+    public function addArticle(Request $request)
     {
         # Créer un nouvel article
         $article = new Article();
@@ -108,57 +115,62 @@ class ArticleController extends AbstractController
         # Affecter un Auteur à l'article
         $article->setMembre($membre);
 
-        # Création d'un formulaire permettant l'ajout d'un article
-        $form = $this->createFormBuilder($article)
-            # Titre
-            ->add('titre', TextType::class, [
-                'required' => true,
-                'label' => false,
-                'attr' => [
-                    'placeholder' => "titre de l'article"
-                ]
-            ])
-            # Catégorie
-            ->add('categorie', EntityType::class, [
-                'class' => Categorie::class,
-                'choice_label' => 'nom',
-                'label' => false
-            ])
-            # Contenu
-            ->add('contenu', TextareaType::class, [
-                'required' => true,
-                'label' => false
-            ])
-            ->add('featuredImage', FileType::class, [
-                'required' => false,
-                'label' => false,
-                'attr' => [
-                    'class' => 'dropify'
-                ]
-            ])
-            ->add('special', CheckboxType::class, [
-                'required' => false,
-                'attr' => [
-                    'data-toggle' => 'toggle',
-                    'data-on' => 'Oui',
-                    'data-off' => 'Non'
-                ]
-            ])
+        # Création d'un formulaire permettant l'ajout d'un article ou d'un utilisateur
+        $form = $this->createForm(ArticleFormType::class, $article);
 
-            ->add('spotlight', CheckboxType::class, [
-                'required' => false,
-                'attr' => [
-                    'data-toggle' => 'toggle',
-                    'data-on' => 'Oui',
-                    'data-off' => 'Non'
-                ]
-            ])
 
-            ->add('submit', SubmitType::class, [
-                'label' => 'Publier mon Article'
-            ])
 
-            ->getForm();
+        # Traitement des données POST
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted()&&$form->isValid()){
+
+            # 1 . Génération du SLUG
+            $article->setSlug( $this->slugify($article->getTitre() ) );
+
+            # 2 . Traitement de l'upload de l'image
+            // $file stores the uploaded PDF file
+            /** @var UploadedFile $file */
+            $file = $article->getFeaturedImage();
+            $fileName = $article->getSlug().'.'.$file->guessExtension();
+
+
+
+            // Move the file to the directory where brochures are stored
+            try {
+                $file->move(
+                    $this->getParameter('images_directory'),
+                    $fileName
+                );
+            } catch (FileException $e) {
+                // ... handle exception if something happens during file upload
+            }
+
+            // updates the 'brochure' property to store the PDF file name
+            // instead of its contents
+            $article->setFeaturedImage($fileName);
+
+
+            # 3 . Sauvegarde en base de donnée
+            $em = $this->getDoctrine()->getManager();
+            $em->persist($article);
+            $em->flush();
+
+
+            # 4 . Notification
+            $this->addFlash('notice',
+                'Félicitations, votre article est en ligne !');
+
+
+            # 5 . Redirection
+            return $this->redirectToRoute('default_article',[
+                'categorie' => $article->getCategorie()->getSlug(),
+                'slug' => $article->getSlug(),
+                'id' => $article->getId()
+            ]);
+
+        }
+
 
         return $this->render("article/addForm.html.twig", [
             'form' => $form->createView()

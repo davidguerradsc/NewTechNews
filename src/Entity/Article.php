@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ArticleRepository")
@@ -16,40 +17,59 @@ class Article
      */
     private $id;
 
+
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="Vous devez saisir un titre")
+     * @Assert\Length(
+     *     max="255",
+     *     maxMessage="Votre titre ne doit pas dépasser {{limit}} caractères."
+     * )
      */
     private $titre;
+
 
     /**
      * @ORM\Column(type="string", length=255)
      */
     private $slug;
 
+
     /**
      * @ORM\Column(type="text")
+     * @Assert\NotBlank( message="Vous avez oublié le contenu de vorte Article")
      */
     private $contenu;
 
+
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="Vous avez oublié l'image")
+     * @Assert\Image(
+     *     mimeTypesMessage="Vérifiez le format de votre fichier.",
+     *     maxSize="1M", maxSizeMessage="Attention, votre image est trop lourde."
+     * )
      */
     private $featuredImage;
+
 
     /**
      * @ORM\Column(type="boolean")
      */
     private $spotlight;
 
+
     /**
      * @ORM\Column(type="boolean")
      */
     private $special;
 
+
     /**
      * @ORM\Column(type="datetime")
      */
     private $dateCretion;
+
 
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\Categorie", inversedBy="articles")
@@ -57,11 +77,22 @@ class Article
      */
     private $categorie;
 
+
     /**
      * @ORM\ManyToOne(targetEntity="App\Entity\Membre", inversedBy="articles")
      * @ORM\JoinColumn(nullable=false)
      */
     private $membre;
+
+
+    /*
+     * Article constructeur
+     */
+    public function __construct()
+    {
+        $this->dateCretion = new \DateTime();
+    }
+
 
     public function getId(): ?int
     {
@@ -104,12 +135,12 @@ class Article
         return $this;
     }
 
-    public function getFeaturedImage(): ?string
+    public function getFeaturedImage()
     {
         return $this->featuredImage;
     }
 
-    public function setFeaturedImage(string $featuredImage): self
+    public function setFeaturedImage($featuredImage): self
     {
         $this->featuredImage = $featuredImage;
 
