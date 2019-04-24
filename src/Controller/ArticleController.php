@@ -123,7 +123,7 @@ class ArticleController extends AbstractController
         # Traitement des données POST
         $form->handleRequest($request);
 
-        if ($form->isSubmitted()&&$form->isValid()){
+        if ($form->isSubmitted() && $form->isValid()){
 
             # 1 . Génération du SLUG
             $article->setSlug( $this->slugify($article->getTitre() ) );
